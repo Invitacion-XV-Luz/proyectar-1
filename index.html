@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subí tu foto a la fiesta</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #0d0015;
+      background-image: 
+        radial-gradient(circle at 30% 20%, rgba(255, 0, 128, 0.3) 0%, transparent 60%),
+        radial-gradient(circle at 80% 80%, rgba(219, 39, 119, 0.25) 0%, transparent 60%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      overflow: hidden;
+      position: relative;
+      text-align: center;
+      padding: 20px;
+    }
+
+    /* Estrellas parpadeantes */
+    .star {
+      position: absolute;
+      color: white;
+      user-select: none;
+      pointer-events: none;
+      animation: twinkle var(--duration) infinite ease-in-out;
+      opacity: var(--base-opacity);
+      z-index: 1;
+    }
+
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.2; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.2); text-shadow: 0 0 10px rgba(255, 255, 255, 0.9); }
+    }
+
+    /* Tarjeta central */
+    .card {
+      position: relative;
+      z-index: 10;
+      background: rgba(20, 10, 30, 0.65);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 0, 128, 0.3);
+      padding: 40px 30px;
+      border-radius: 28px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 25px rgba(255, 0, 128, 0.2);
+      max-width: 360px;
+      width: 100%;
+    }
+
+    h2 {
+      margin-top: 0;
+      font-size: 1.8rem;
+      margin-bottom: 12px;
+      background: linear-gradient(45deg, #ffffff, #ff758c);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p {
+      color: #d1d5db;
+      font-size: 0.95rem;
+      margin-bottom: 30px;
+      line-height: 1.4;
+    }
+
+    .upload-btn {
+      background: linear-gradient(135deg, #ff2a85, #d9006c);
+      color: white;
+      padding: 16px 30px;
+      border-radius: 50px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      border: none;
+      display: inline-block;
+      font-weight: bold;
+      box-shadow: 0 6px 20px rgba(255, 42, 133, 0.5);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .upload-btn:active {
+      transform: scale(0.96);
+    }
+
+    input[type="file"] { display: none; }
+    
+    #status {
+      margin-top: 20px;
+      font-size: 0.95rem;
+      color: #ff99c8;
+      min-height: 24px;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Cielo estrellado generado automáticamente -->
+  <div id="stars-container"></div>
+
+  <div class="card">
+    <h2> Muro de fotos</h2>
+    <p>¡Subí tus fotos y proyéctalas al instante en la pantalla!</p>
+    
+    <label for="photoInput" class="upload-btn">Seleccionar foto</label>
+    <input type="file" id="photoInput" accept="image/*">
+    <div id="status"></div>
+  </div>
+
+  <script>
+    // Generar estrellas de 5 puntas distribuidas aleatoriamente
+    const starsContainer = document.getElementById('stars-container');
+    const numStars = 40;
+
+    for (let i = 0; i < numStars; i++) {
+      const star = document.createElement('div');
+      star.className = 'star';
+      star.innerHTML = '★';
+      star.style.left = Math.random() * 100 + 'vw';
+      star.style.top = Math.random() * 100 + 'vh';
+      star.style.fontSize = (Math.random() * 10 + 12) + 'px';
+      star.style.setProperty('--duration', (Math.random() * 3 + 2) + 's');
+      star.style.setProperty('--base-opacity', Math.random() * 0.6 + 0.2);
+      star.style.animationDelay = (Math.random() * 3) + 's';
+      starsContainer.appendChild(star);
+    }
+  </script>
+
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCkVe5jgSNlETbkzoPch1RJ8gyfQv1Qgws",
+      authDomain: "fotos-15-e878a.firebaseapp.com",
+      projectId: "fotos-15-e878a",
+      storageBucket: "fotos-15-e878a.firebasestorage.app",
+      messagingSenderId: "808936606253",
+      appId: "1:808936606253:web:d7ed512a5d8ca0bbaec6a4"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const input = document.getElementById('photoInput');
+    const status = document.getElementById('status');
+
+    function compressImage(file) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+          const img = new Image();
+          img.src = event.target.result;
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 1000;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > MAX_WIDTH) {
+              height = Math.round((height * MAX_WIDTH) / width);
+              width = MAX_WIDTH;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            resolve(canvas.toDataURL('image/jpeg', 0.7));
+          };
+        };
+      });
+    }
+
+    input.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      status.innerText = "Procesando foto...";
+      try {
+        const base64Image = await compressImage(file);
+
+        status.innerText = "Subiendo al muro...";
+        await addDoc(collection(db, "photos"), {
+          image: base64Image,
+          timestamp: serverTimestamp(),
+          approved: true
+        });
+
+        status.innerText = "¡Foto subida con éxito! Mirá el proyector ✨";
+        input.value = "";
+      } catch (err) {
+        console.error(err);
+        status.innerText = "Hubo un error al procesar la foto. Intentá de nuevo.";
+      }
+    });
+  </script>
+</body>
+</html>

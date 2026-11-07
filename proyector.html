@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Muro de Fotos en Vivo</title>
+  <style>
+    body { margin: 0; background: black; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    #display { max-width: 90vw; max-height: 90vh; border-radius: 12px; box-shadow: 0 0 40px rgba(255,255,255,0.3); transition: opacity 0.5s ease-in-out; opacity: 0; object-fit: contain; }
+    #display.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+  <img id="display" src="" alt="Live Feed">
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCkVe5jgSNlETbkzoPch1RJ8gyfQv1Qgws",
+      authDomain: "fotos-15-e878a.firebaseapp.com",
+      projectId: "fotos-15-e878a",
+      storageBucket: "fotos-15-e878a.firebasestorage.app",
+      messagingSenderId: "808936606253",
+      appId: "1:808936606253:web:d7ed512a5d8ca0bbaec6a4"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const imgElement = document.getElementById('display');
+    const photosQueue = [];
+    let isDisplaying = false;
+
+    const q = query(collection(db, "photos"), where("approved", "==", true), orderBy("timestamp", "desc"));
+
+    onSnapshot(q, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "added") {
+          const data = change.doc.data();
+          if (data.image) {
+            photosQueue.push(data.image);
+            if (!isDisplaying) processQueue();
+          }
+        }
+      });
+    });
+
+    function processQueue() {
+      if (photosQueue.length === 0) {
+        isDisplaying = false;
+        return;
+      }
+
+      isDisplaying = true;
+      const nextImg = photosQueue.shift();
+
+      imgElement.classList.remove('show');
+      setTimeout(() => {
+        imgElement.src = nextImg;
+        imgElement.onload = () => {
+          imgElement.classList.add('show');
+        };
+        setTimeout(processQueue, 6000);
+      }, 500);
+    }
+  </script>
+</body>
+</html>
